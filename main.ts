@@ -1,11 +1,34 @@
-// A working news-image-daily entry (Node 22, standard library only): its image is the entry.png beside this file, and
-// the program copies it to /output/entry.png. A starting point, not a winner: replace the image. The gate takes a
-// whole PNG or JPEG of at most 1 MiB and 1024 by 1024 pixels, and the judge sees exactly the bytes copied.
+// news-image-20261126 entrypoint (Node 22, standard library only).
 //
-// Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:
+// The picture for Thursday 26 November 2026 is the entry.png sitting next to
+// this file. The job here is small: prove the file really is a PNG, then put
+// a byte-for-byte copy where the grader looks for it.
+//
+// In the grading container the destination is /output; anywhere else the
+// MAKEFUN_OUTPUT_DIR environment variable names the folder to use instead:
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 
-import { copyFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-copyFileSync(new URL('./entry.png', import.meta.url), join(process.env.MAKEFUN_OUTPUT_DIR ?? '/output', 'entry.png'));
+const PNG_MAGIC = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+
+const here = fileURLToPath(new URL('.', import.meta.url));
+const source = join(here, 'entry.png');
+const outDir = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
+const dest = join(outDir, 'entry.png');
+
+const bytes = readFileSync(source);
+
+const looksLikePng =
+  bytes.length > PNG_MAGIC.length &&
+  PNG_MAGIC.every((b, i) => bytes[i] === b);
+if (!looksLikePng) {
+  throw new Error(`entry.png does not start with the PNG signature`);
+}
+
+mkdirSync(outDir, { recursive: true });
+writeFileSync(dest, bytes);
+
+console.log(`entry.png: ${bytes.length} bytes -> ${dest}`);
